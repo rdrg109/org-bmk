@@ -144,3 +144,5 @@ Returns nil when the two arguments are nil."
       (message "The subtree at point doesn't have the required
       properties to be considered a search engine or a
       bookmark."))))
+
+(provide 'org-bookmarks)
