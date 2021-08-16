@@ -1,0 +1,9 @@
+* Introduction
+:PROPERTIES:
+:CREATED: [2021-08-16 Mon 00:32]
+:END:
+
+The bookmark indexer for the Org Mode user.
+
++ Every heading that has a =LINK= property is considered a bookmark.
++ Bookmarks are indexed, so that you can then search your bookmaks using any completion framework (i.e. =ivy=, =helm=, etc.).
