@@ -1,0 +1,12 @@
+* Bookmarks
+
+** List of supported languges
+:PROPERTIES:
+:LINK: [[info:org#Languages]]
+:END:
+
+** Editing source code
+:PROPERTIES:
+:LINK: [[info:org#Editing Source Code]]
+:END:
+

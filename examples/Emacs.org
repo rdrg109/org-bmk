@@ -1,0 +1,29 @@
+#+FILETAGS: emacs
+
+* Bookmarks
+
+** Official site
+:PROPERTIES:
+:LINK: http://www.gnu.org/software/emacs/
+:END:
+
+** Mailing lists                                              :mailing_list:
+:PROPERTIES:
+:CREATED: [2021-08-11 Wed 09:27]
+:END:
+
+*** List of mailing lists                                      :masterlist:
+:PROPERTIES:
+:LINK: http://savannah.gnu.org/mail/?group_id=40
+:END:
+
+*** =bug-gnu-emacs= archive                                       :archive:
+:PROPERTIES:
+:LINK: https://lists.gnu.org/archive/html/bug-gnu-emacs
+:END:
+
+*** =help-gnu-emacs= archive                                      :archive:
+:PROPERTIES:
+:LINK: https://lists.gnu.org/archive/html/help-gnu-emacs
+:END:
+

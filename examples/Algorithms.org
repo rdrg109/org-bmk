@@ -1,0 +1,6 @@
+* Binary search trees
+
+** Chapter 12 at Cormen Book
+:PROPERTIES:
+:LINK: [[pdf:~/my/books/main/7.pdf::307]]
+:END:
