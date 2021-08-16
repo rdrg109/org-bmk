@@ -117,7 +117,7 @@ format it in a more readable format."
                    :multiline t
                    :action 'org-bmk-open-link)))
 
-(defun org-bmk-prompt-bookmkark ()
+(defun org-bmk-prompt-bookmark ()
   (interactive)
   "Prompts for a given bookmark."
   (funcall org-bmk-prompt-function (org-bmk-build-candidates-list)))
