@@ -21,7 +21,7 @@ Having this property is the only requirement for a heading to be
 considered a bookmark."
   :type 'string)
 
-(defcustom org-bmk-prompt-function 'org-bmk-prompt-bookmark-ivy
+(defcustom org-bmk-prompt-function 'org-bmk-prompt-bookmark-helm
   "Function used for prompting for a bookmark."
   :type 'function)
 
