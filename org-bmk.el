@@ -7,15 +7,16 @@
 (defcustom org-bmk-files nil
   "Org files which stores the bookmarks.")
 
-(defcustom org-bmk-completion-list-format '(path-file path-outline link tags)
+(defcustom org-bmk-completion-list-format '(path-file path-outline link tags description)
   "Format used for bookmarks in the completion list")
 
 (defcustom org-bmk-labels
   (list (cons 'path-file (propertize "File\n" 'face 'bold))
         (cons 'path-outline (propertize "Outline\n" 'face' bold))
         (cons 'link (propertize "Link: " 'face' bold))
-        (cons 'tags (propertize "Tags: " 'face' bold)))
-  "Labelsp for the symbols.")
+        (cons 'tags (propertize "Tags: " 'face' bold))
+        (cons 'description (propertize "Description: " 'face' bold)))
+  "Labels for the symbols.")
 
 (defcustom org-bmk-formatters
   (list (cons 'path-file 'org-bmk-formatter-path-file)
@@ -43,49 +44,95 @@ considered a bookmark."
 (defvar org-bmk-bookmarks nil
   "Contains the data of all the indexed bookmarks.")
 
-;;; Formatters
-
-(defun org-bmk-formatter-path-file (path)
-  (let (result)
-    (setq path (split-string path "/" t))
-    (dotimes (i (length path))
-      (let ((line-prefix (make-string (* i 2) ? ))
-            (content (nth i path)))
-        (push (propertize content 'line-prefix line-prefix) result)))
-    (string-join (reverse result) "\n")))
-
-(defun org-bmk-formatter-path-outline (path)
-  "Given a list representing the outline of an Org Mode heading,
-format it in a more readable format."
-  (let (result)
-    (dotimes (i (length path))
-      (let ((prefix (propertize
-                     (concat
-                      (number-to-string i)
-                      ". ")
-                     ;; We use line-prefix for the indentation of each
-                     ;; level, so that we can use the "^" operator for
-                     ;; matching the depth of the headline.
-                     'line-prefix
-                     (make-string (* i 2) ? )))
-            (content (nth i path)))
-        (push (format "%s%s" prefix content) result)))
-    (string-join (reverse result) "\n")))
+(defvar org-bmk-prompt-bookmark-candidates nil
+  "Stores the candidates so that they are not obtained whenever
+  the function is called.")
 
 ;;; Functions
 
-(defun org-bmk-store-headline ()
-  "Store the information of a headline.
+(defun org-bmk-index-link-at-point ()
+  "Store the information of the link at point."
+  (let ((path-file (buffer-file-name))
+        (element (org-element-context))
+        alist link description tags path-outline)
 
-This function is intended to be executed in a headline. A
-precondition for this function is that the headline contains a
-LINK property."
-  (let (alist)
-    (push (cons 'path-file (buffer-file-name)) alist)
-    (push (cons 'path-outline (org-get-outline-path t)) alist)
-    (push (cons 'link (org-entry-get nil "LINK")) alist)
-    (push (cons 'tags (org-get-tags)) alist)
+    ;; If the link is at the top level of the document, then it
+    ;; doesn't have neither tags nor an outline.
+
+    ;; FIXME: org-get-tags doesn't get the tags when in the top level
+    ;; of the document even when #+FILE_TAGS have set the tags for the
+    ;; whole document. Is this expected behavior?
+
+    (when (org-current-level)
+      (setq path-outline (org-get-outline-path t))
+      (setq tags (org-get-tags)))
+
+    ;;; Get the link and the description
+    ;;
+    ;; If the link is at a property node, then we need to retrieve the
+    ;; link beforehand.
+    ;;
+    ;; FIXME: Repeated code
+
+
+    (if (eq (car element) 'node-property)
+        (progn
+          (setq link (org-element-property :value element))
+          (with-temp-buffer
+            (org-mode)
+            (insert link)
+            (backward-char)
+            ;; Once we retrieve the link, we obtain "element" again.
+            (setq element (org-element-context))
+            (setq link (org-element-property :raw-link element))
+            (setq description-begin (org-element-property :contents-begin element))
+            (setq description-end (org-element-property :contents-end element))
+            (setq description (and description-begin
+                                   description-end
+                                   (buffer-substring-no-properties
+                                    description-begin
+                                    description-end)))))
+      (progn
+        (setq link (org-element-property :raw-link element))
+        (setq description-begin (org-element-property :contents-begin element))
+        (setq description-end (org-element-property :contents-end element))
+        (setq description (and description-begin
+                               description-end
+                               (buffer-substring-no-properties
+                                description-begin
+                                description-end)))))
+
+    ;;; Save the data
+
+    (push (cons 'path-file path-file) alist)
+    (push (cons 'link link) alist)
+
+    ;; A link can be at the top level of the document which causes the
+    ;; outline to its position in the outline to be nil.
+    (when path-outline
+      (push (cons 'path-outline path-outline) alist))
+    (when tags
+      (push (cons 'tags tags) alist))
+    (when description
+      (push (cons 'description description) alist))
     (push alist org-bmk-bookmarks)))
+
+(defun org-bmk-index-bookmarks-in-file (file)
+  (with-current-buffer (find-file-noselect file)
+    (save-excursion
+      (beginning-of-buffer)
+      (while (re-search-forward org-any-link-re nil t)
+        (catch 'next
+          ;; If the link is at a source block¸ then don't consider
+          ;; it.
+          ;;
+          ;; FIXME: Use org-context instead, because, aparently, it is
+          ;; faster.
+          (when (or (eq (car (org-element-context)) 'example-block)
+                    (eq (car (org-element-context)) 'src-block))
+            (throw 'next t))
+          (backward-char)
+          (org-bmk-index-link-at-point))))))
 
 (defun org-bmk-index-bookmarks ()
   "Store all the bookmarks in `org-bmk-bookmarks'.
@@ -96,16 +143,7 @@ traversing all the files again."
   (setq org-bmk-bookmarks nil)
   (dolist (file org-bmk-files)
     (message "Traversing %s" file)
-    (with-current-buffer (find-file-noselect file)
-      (org-map-entries 'org-bmk-store-headline "LINK={.}"))))
-
-(defun org-bmk-open-link (link)
-  "Open an Org Mode link."
-  (with-temp-buffer
-    (org-mode)
-    (insert link)
-    (beginning-of-buffer)
-    (org-open-at-point)))
+    (org-bmk-index-bookmarks-in-file file)))
 
 (defun org-bmk-format-bookmark (bookmark)
   "Format the information of a given bookmark according to the
@@ -147,7 +185,7 @@ format defined by `org-bmk-completion-list-format'"
             candidates
             :action (lambda (x)
                       (let ((link (cdr x)))
-                        (org-bmk-open-link link)))))
+                        (org-open-link-from-string link)))))
 
 (defun org-bmk-prompt-bookmark-helm (candidates)
   (interactive)
@@ -155,13 +193,55 @@ format defined by `org-bmk-completion-list-format'"
         :sources (helm-build-sync-source "Bookmark"
                    :candidates candidates
                    :multiline t
-                   :action 'org-bmk-open-link)))
+                   :action 'org-open-link-from-string)))
 
-;;; Interactive functions
+
+;;;; Formatters
+
+(defun org-bmk-formatter-path-file (path)
+  (let (result)
+    (setq path (split-string path "/" t))
+    (dotimes (i (length path))
+      (let ((line-prefix (make-string (* i 2) ? ))
+            (content (nth i path)))
+        (push (propertize content 'line-prefix line-prefix) result)))
+    (string-join (reverse result) "\n")))
+
+(defun org-bmk-formatter-path-outline (path)
+  "Given a list representing the outline of an Org Mode heading,
+format it in a more readable format."
+  (let (result)
+    (dotimes (i (length path))
+      (let ((prefix (propertize
+                     (concat
+                      (number-to-string i)
+                      ". ")
+                     ;; We use line-prefix for the indentation of each
+                     ;; level, so that we can use the "^" operator for
+                     ;; matching the depth of the headline.
+                     'line-prefix
+                     (make-string (* i 2) ? )))
+            (content (nth i path)))
+        (push (format "%s%s" prefix content) result)))
+    (string-join (reverse result) "\n")))
+
+;;;; Interactive functions
 
 (defun org-bmk-prompt-bookmark ()
+  "Prompts for a given bookmark. The candidates for the prompt
+function are computed whenever this function is called. See
+`org-bmk-prompt-bookmark-use-cache' if you would rather use cache
+instead."
   (interactive)
-  "Prompts for a given bookmark."
   (funcall org-bmk-prompt-function (org-bmk-build-candidates-list)))
+
+(defun org-bmk-prompt-bookmark-use-cache (&optional arg)
+  "Prompts for a given bookmark by using the cache information.
+
+With `\\[universal-argument], the cache is refreshed."
+  (interactive "p")
+  (when (or (> arg 1) (null org-bmk-prompt-bookmark-cache))
+    (setq org-bmk-prompt-bookmark-cache (org-bmk-build-candidates-list)))
+  (funcall org-bmk-prompt-function org-bmk-prompt-bookmark-cache))
 
 (provide 'org-bmk)
