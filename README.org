@@ -5,5 +5,13 @@
 
 A bookmark manager for the Org Mode user.
 
-+ Every heading that has a =LINK= property is considered a bookmark.
-+ Bookmarks are indexed, so that you can then search your bookmaks using any completion framework (i.e. =ivy=, =helm=, etc.).
+These are some features of the package:
+
+1. Every Org Mode link is considered a bookmark.
+2. Links can be indexed.
+3. You use any completion framework (i.e. =ivy=, =helm=, etc.) to search the indexed links.
+4. You can show metadata for each link for easier searching. Some of the metadata that is available is
+   + The path of the file that contains the link
+   + The outline of the headline that contain the link
+   + The tags of the headline that contain the link.
+   + The description of the link
