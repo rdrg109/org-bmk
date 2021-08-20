@@ -2,5 +2,5 @@
 
 ** Chapter 12 at Cormen Book
 :PROPERTIES:
-:LINK: [[pdf:~/my/books/main/7.pdf::307]]
+:LINK: [[pdf:~/my/books/main/7.pdf::07][Page 7 at Cormen's book]]
 :END:
